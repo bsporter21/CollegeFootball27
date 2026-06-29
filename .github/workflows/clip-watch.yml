@@ -36,14 +36,15 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python scraper.py
 
-      - name: Commit updated state
-        run: |
-          git config user.name "clip-watch-bot"
-          git config user.email "[email protected]"
-          git add state.json media.json
-          if git diff --cached --quiet; then
-            echo "No new clips; nothing to commit."
-          else
-            git commit -m "Update clip-watch state [skip ci]"
-            git push
-          fi
+      - name: Commit and push changes
+      run: |
+        git config user.name "clip-watch-bot"
+        git config user.email "actions@github.com"
+        git add state.json
+        # The || true prevents the script from crashing if there are no changes
+        git commit -m "Update clip-watch state [skip ci]" || true
+        
+        # FIX: Pull down remote changes and layer your local state changes on top
+        git pull --rebase origin main
+        
+        git push origin main

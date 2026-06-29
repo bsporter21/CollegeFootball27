@@ -18,6 +18,7 @@ jobs:
     defaults:
       run:
         working-directory: clip-watch
+    
     steps:
       - name: Check out repo
         uses: actions/checkout@v4

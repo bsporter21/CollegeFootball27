@@ -6,7 +6,6 @@ from pathlib import Path
 import aiohttp
 import cv2
 import base64
-import aiofiles
 import tempfile
 import mimetypes
 

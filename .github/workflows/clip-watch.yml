@@ -38,14 +38,14 @@ jobs:
         run: python scraper.py
 
       - name: Commit and push changes
-      run: |
-        git config user.name "clip-watch-bot"
-        git config user.email "actions@github.com"
-        git add state.json
-        # The || true prevents the script from crashing if there are no changes
-        git commit -m "Update clip-watch state [skip ci]" || true
-        
-        # FIX: Pull down remote changes and layer your local state changes on top
-        git pull --rebase origin main
-        
-        git push origin main
+        run: |
+          git config user.name "clip-watch-bot"
+          git config user.email "actions@github.com"
+          git add state.json
+          # The || true prevents the script from crashing if there are no changes
+          git commit -m "Update clip-watch state [skip ci]" || true
+          
+          # FIX: Pull down remote changes and layer your local state changes on top
+          git pull --rebase origin main
+          
+          git push origin main

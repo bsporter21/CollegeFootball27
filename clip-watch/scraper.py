@@ -4,6 +4,55 @@ import os
 import sys
 from pathlib import Path
 import aiohttp
+import cv2
+import base64
+import aiofiles
+import tempfile
+import mimetypes
+
+# ── Frame Extraction Helpers ───────────────────────────────────────────────────
+
+async def download_file(session, url):
+    try:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.read()
+            temp = tempfile.NamedTemporaryFile(delete=False)
+            temp.write(data)
+            temp.close()
+            return temp.name
+    except:
+        return None
+
+def encode_image(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+def extract_frames(video_path, num_frames=12):
+    cap = cv2.VideoCapture(video_path)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    if total_frames == 0:
+        return []
+
+    step = max(1, total_frames // num_frames)
+    frames_b64 = []
+
+    for i in range(0, total_frames, step):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, i)
+        success, frame = cap.read()
+        if not success:
+            continue
+
+        _, buffer = cv2.imencode(".jpg", frame)
+        frames_b64.append(base64.b64encode(buffer).decode("utf-8"))
+
+        if len(frames_b64) >= num_frames:
+            break
+
+    cap.release()
+    return frames_b64
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 GAMERTAGS = ["xxxOpie24xxx", "Pope115", "THEE WATERB0Y", "TGoob24", "trost24"]
@@ -84,7 +133,29 @@ async def fetch_screenshots(session: aiohttp.ClientSession, api_key: str, xuid: 
 
 # ── Sheet Push Logic ───────────────────────────────────────────────────────────
 async def push_to_sheets(session: aiohttp.ClientSession, timestamp: str, media_url: str) -> bool:
-    payload = {"timestamp": timestamp, "url": media_url}
+    # Download the media file locally
+    file_path = await download_file(session, media_url)
+    if not file_path:
+        return False
+
+    # Detect file type
+    mime_type, _ = mimetypes.guess_type(media_url)
+
+    # Screenshot → single frame
+    if mime_type and mime_type.startswith("image"):
+        frames = [encode_image(file_path)]
+    else:
+        # Video → extract 12 frames for maximum immersion
+        frames = extract_frames(file_path, num_frames=12)
+
+    # Build payload for Apps Script
+    payload = {
+        "timestamp": timestamp,
+        "media_url": media_url,
+        "frames": frames
+    }
+
+    # Send to Google Apps Script
     try:
         async with session.post(SHEET_URL, json=payload) as resp:
             return resp.status == 200
